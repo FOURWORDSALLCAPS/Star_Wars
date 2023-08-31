@@ -58,17 +58,13 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
 
 
-async def animate_spaceship(canvas, row, column):
-    spaceships = cycle(['rocket_frame_1.txt', 'rocket_frame_2.txt'])
+async def animate_spaceship(canvas, row, column, spaceship_frames):
+    spaceships = cycle(spaceship_frames)
     while True:
         spaceship = next(spaceships)
-        with open(f"spaceship/{spaceship}", "r") as file:
-            file_contents = file.read()
-        draw_frame(canvas, row, column, file_contents)
-        canvas.refresh()
-        time.sleep(0.2)
-        draw_frame(canvas, row, column, file_contents, negative=True)
-
+        draw_frame(canvas, row, column, spaceship)
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, spaceship, negative=True)
         rows_dir, columns_dir, _ = read_controls(canvas)
 
         row += rows_dir * 1
@@ -76,7 +72,7 @@ async def animate_spaceship(canvas, row, column):
 
         max_row, max_column = canvas.getmaxyx()
 
-        rows, columns = get_frame_size(file_contents)
+        rows, columns = get_frame_size(spaceship)
 
         row = min(max(row + rows_dir, 0), max_row - rows)
         column = min(max(column + columns_dir, 0), max_column - columns)
@@ -88,6 +84,10 @@ def draw(canvas):
     curses.curs_set(False)
     max_row, max_column = canvas.getmaxyx()
     coroutines = []
+    spaceship_frames = []
+    for spaceship_file in ['rocket_frame_1.txt', 'rocket_frame_2.txt']:
+        with open(f"spaceship/{spaceship_file}", "r") as file:
+            spaceship_frames.append(file.read())
 
     for _ in range(50):
         row = random.randint(1, max_row - 2)
