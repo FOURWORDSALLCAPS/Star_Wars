@@ -11,10 +11,10 @@ TIC_TIMEOUT = 0.1
 SYMBOLS = ['+', '*', '.', ':']
 
 
-async def blink(canvas, row, column, symbol):
+async def blink(canvas, row, column, symbol, offset_tics):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(random.randint(1, 20)):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
@@ -78,29 +78,25 @@ async def animate_spaceship(canvas, row, column):
 
         rows, columns = get_frame_size(file_contents)
 
-        if row < 0:
-            row = 0
-        elif row + rows > max_row:
-            row = max_row - rows
-
-        if column < 0:
-            column = 0
-        elif column + columns > max_column:
-            column = max_column - columns
+        row = min(max(row + rows_dir, 0), max_row - rows)
+        column = min(max(column + columns_dir, 0), max_column - columns)
 
 
-async def animate_stars(canvas, num_stars=50):
+def draw(canvas):
+    canvas.border()
+    canvas.nodelay(True)
+    curses.curs_set(False)
     max_row, max_column = canvas.getmaxyx()
     coroutines = []
 
-    for _ in range(num_stars):
+    for _ in range(50):
         row = random.randint(1, max_row - 2)
         col = random.randint(1, max_column - 2)
         symbol = random.choice(SYMBOLS)
-        coroutines.append(blink(canvas, row, col, symbol))
+        coroutines.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
 
     # coroutines.append(fire(canvas, max_row / 2, max_column / 2))
-    coroutines.append(animate_spaceship(canvas, max_row / 2, max_column / 2))
+    coroutines.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
 
     while True:
         for coroutine in coroutines.copy():
@@ -109,14 +105,7 @@ async def animate_stars(canvas, num_stars=50):
                 canvas.refresh()
             except StopIteration:
                 coroutines.remove(coroutine)
-        await asyncio.sleep(TIC_TIMEOUT)
-
-
-def draw(canvas):
-    canvas.border()
-    canvas.nodelay(True)
-    curses.curs_set(False)
-    asyncio.run(animate_stars(canvas))
+        time.sleep(TIC_TIMEOUT)
 
 
 if __name__ == '__main__':
