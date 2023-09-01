@@ -84,14 +84,15 @@ def draw(canvas):
     curses.curs_set(False)
     max_row, max_column = canvas.getmaxyx()
     coroutines = []
+    distance_from_borders_min = 1
+    distance_from_borders_max = 2
     spaceship_frames = []
     for spaceship_file in ['rocket_frame_1.txt', 'rocket_frame_1.txt', 'rocket_frame_2.txt', 'rocket_frame_2.txt']:
         with open(f"spaceship/{spaceship_file}", "r") as file:
             spaceship_frames.append(file.read())
-
-    for _ in range(50):
-        row = random.randint(1, max_row - 2)
-        col = random.randint(1, max_column - 2)
+    for _ in range(80):
+        row = random.randint(distance_from_borders_min, max_row - distance_from_borders_max)
+        col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
         symbol = random.choice(SYMBOLS)
         coroutines.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
 
