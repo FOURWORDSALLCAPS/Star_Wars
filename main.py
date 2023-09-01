@@ -85,7 +85,7 @@ def draw(canvas):
     max_row, max_column = canvas.getmaxyx()
     coroutines = []
     spaceship_frames = []
-    for spaceship_file in ['rocket_frame_1.txt', 'rocket_frame_2.txt']:
+    for spaceship_file in ['rocket_frame_1.txt', 'rocket_frame_1.txt', 'rocket_frame_2.txt', 'rocket_frame_2.txt']:
         with open(f"spaceship/{spaceship_file}", "r") as file:
             spaceship_frames.append(file.read())
 
@@ -95,16 +95,15 @@ def draw(canvas):
         symbol = random.choice(SYMBOLS)
         coroutines.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
 
-    # coroutines.append(fire(canvas, max_row / 2, max_column / 2))
     coroutines.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
 
     while True:
         for coroutine in coroutines.copy():
             try:
                 coroutine.send(None)
-                canvas.refresh()
             except StopIteration:
                 coroutines.remove(coroutine)
+        canvas.refresh()
         time.sleep(TIC_TIMEOUT)
 
 
