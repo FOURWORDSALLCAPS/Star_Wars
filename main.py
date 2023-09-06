@@ -3,6 +3,7 @@ import curses
 import asyncio
 import random
 
+from obstacles import Obstacle, show_obstacles
 from physics import update_speed
 from itertools import cycle
 from curses_tools import draw_frame, read_controls, get_frame_size
@@ -11,6 +12,8 @@ from curses_tools import draw_frame, read_controls, get_frame_size
 TIC_TIMEOUT = 0.1
 SYMBOLS = ['+', '*', '.', ':']
 COROUTINES = []
+OBSTACLES = []
+OBSTACLES_IN_LAST_COLLISIONS = []
 
 
 async def sleep(tics):
@@ -52,13 +55,22 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     max_row, max_column = rows - 1, columns - 1
 
     curses.beep()
-
     while 0 < row < max_row and 0 < column < max_column:
         canvas.addstr(round(row), round(column), symbol)
+
+        for obstacle in OBSTACLES.copy():
+            if obstacle.has_collision(round(row), round(column)):
+                OBSTACLES.remove(obstacle)
+                OBSTACLES_IN_LAST_COLLISIONS.append(obstacle)
+                canvas.addstr(round(row), round(column), ' ')
+                return
+
         await asyncio.sleep(0)
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
+
+    canvas.addstr(round(row), round(column), ' ')
 
 
 async def animate_spaceship(canvas, row, column, spaceship_frames):
@@ -93,11 +105,24 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
     row = 0
 
+    rows, columns = get_frame_size(garbage_frame)
     while row < rows_number:
-        draw_frame(canvas, row, column, garbage_frame)
+        new_obstacle = Obstacle(row, column, rows, columns)
+        OBSTACLES.append(new_obstacle)
+
+        draw_frame(canvas, round(row), round(column), garbage_frame)
         await asyncio.sleep(0)
-        draw_frame(canvas, row, column, garbage_frame, negative=True)
+        draw_frame(canvas, round(row), round(column), garbage_frame, negative=True)
         row += speed
+
+        for garbage in OBSTACLES_IN_LAST_COLLISIONS:
+            if new_obstacle.has_collision(garbage.row, garbage.column):
+                OBSTACLES_IN_LAST_COLLISIONS.remove(garbage)
+                canvas.addstr(round(new_obstacle.row), round(new_obstacle.column), ' ')
+                return
+
+        if new_obstacle in OBSTACLES:
+            OBSTACLES.remove(new_obstacle)
 
 
 async def fill_orbit_with_garbage(canvas, garbage_frames):
@@ -110,6 +135,7 @@ async def fill_orbit_with_garbage(canvas, garbage_frames):
 
         col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
         COROUTINES.append(fly_garbage(canvas, col, garbage_frame))
+
         await sleep(12)
 
         col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
@@ -139,6 +165,7 @@ def draw(canvas):
         COROUTINES.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
     COROUTINES.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
     COROUTINES.append(fill_orbit_with_garbage(canvas, garbage_frames))
+    COROUTINES.append(show_obstacles(canvas, OBSTACLES))
     while True:
         for coroutine in COROUTINES.copy():
             try:
