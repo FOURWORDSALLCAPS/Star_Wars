@@ -22,6 +22,23 @@ async def sleep(tics):
         await asyncio.sleep(0)
 
 
+async def show_gameover(canvas):
+    with open("gameover/gameover.txt", "r") as gameover_file:
+        gameover_frame = gameover_file.read()
+
+    rows, columns = canvas.getmaxyx()
+    gameover_lines = gameover_frame.splitlines()
+
+    start_row = (rows - len(gameover_lines)) // 2
+    start_column = (columns - max(len(line) for line in gameover_lines)) // 2
+
+    while True:
+        for i, line in enumerate(gameover_lines):
+            canvas.addstr(start_row + i, start_column, line, curses.A_DIM)
+
+        await asyncio.sleep(0)
+
+
 async def blink(canvas, row, column, symbol, offset_tics):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
@@ -97,6 +114,11 @@ async def animate_spaceship(canvas, row, column, spaceship_frames):
         row = min(max(row + rows_dir, 0), max_row - rows)
         column = min(max(column + columns_dir, 0), max_column - columns)
 
+        for obstacle in OBSTACLES:
+            if obstacle.has_collision(row, column, rows, columns):
+                COROUTINES.append(show_gameover(canvas))
+                return
+
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     rows_number, columns_number = canvas.getmaxyx()
@@ -155,7 +177,7 @@ def draw(canvas):
     for spaceship in ['rocket_frame_1.txt', 'rocket_frame_1.txt', 'rocket_frame_2.txt', 'rocket_frame_2.txt']:
         with open(f"spaceship/{spaceship}", "r") as spaceship_file:
             spaceship_frames.append(spaceship_file.read())
-    for garbage in ['trash_large.txt', 'trash_small.txt', 'trash_xl.txt']:
+    for garbage in ['trash_large.txt', 'trash_small.txt', 'trash_xl.txt', 'duck.txt', 'lamp.txt', 'hubble.txt']:
         with open(f"garbage/{garbage}", "r") as garbage_file:
             garbage_frames.append(garbage_file.read())
     for _ in range(80):
@@ -165,7 +187,6 @@ def draw(canvas):
         COROUTINES.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
     COROUTINES.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
     COROUTINES.append(fill_orbit_with_garbage(canvas, garbage_frames))
-    COROUTINES.append(show_obstacles(canvas, OBSTACLES))
     while True:
         for coroutine in COROUTINES.copy():
             try:
