@@ -3,7 +3,8 @@ import curses
 import asyncio
 import random
 
-from obstacles import Obstacle, show_obstacles
+from obstacles import Obstacle
+from game_scenario import PHRASES, get_garbage_delay_tics
 from physics import update_speed
 from explosion import explode
 from itertools import cycle
@@ -15,6 +16,7 @@ SYMBOLS = ['+', '*', '.', ':']
 COROUTINES = []
 OBSTACLES = []
 OBSTACLES_IN_LAST_COLLISIONS = []
+YEAR = 1957
 
 
 async def sleep(tics):
@@ -100,7 +102,8 @@ async def animate_spaceship(canvas, row, column, spaceship_frames):
         await asyncio.sleep(0)
         draw_frame(canvas, row, column, spaceship, negative=True)
         rows_dir, columns_dir, space_pressed = read_controls(canvas)
-        if space_pressed:
+
+        if space_pressed and YEAR >= 2020:
             COROUTINES.append(fire(canvas, row, column + 2))
         row_speed, column_speed = update_speed(row_speed, column_speed, rows_dir, columns_dir)
 
@@ -155,14 +158,48 @@ async def fill_orbit_with_garbage(canvas, garbage_frames):
     while True:
         garbage_frame = random.choice(garbage_frames)
 
-        col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
-        COROUTINES.append(fly_garbage(canvas, col, garbage_frame))
+        if YEAR >= 1961:
+            delay_tics = get_garbage_delay_tics(YEAR)
+            if delay_tics:
+                col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
+                COROUTINES.append(fly_garbage(canvas, col, garbage_frame))
+                await sleep(delay_tics)
 
         await sleep(12)
 
-        col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
-        COROUTINES.append(fly_garbage(canvas, col, garbage_frame))
-        await sleep(12)
+
+async def increase_year():
+    global YEAR
+    while True:
+        await sleep(2)
+        YEAR += 1
+
+
+async def display_year(canvas):
+    max_row, max_column = canvas.getmaxyx()
+    while True:
+        year_str = f" Year: {YEAR}"
+        canvas.addstr(max_row - 2, max_column // 2 - len(year_str) // 2, year_str, curses.A_BOLD)
+        await asyncio.sleep(0)
+
+
+async def display_phrase(canvas):
+    max_row, max_column = canvas.getmaxyx()
+    while True:
+        phrase = PHRASES.get(YEAR)
+        if phrase:
+            phrase_length = len(phrase)
+            row = max_row - 1
+            column = max_column // 2 - phrase_length // 2
+            for _ in range(phrase_length + 1):
+                canvas.addstr(row, column, phrase[:_], curses.A_BOLD)
+                await asyncio.sleep(0)
+            for _ in range(phrase_length, 0, -1):
+                canvas.addstr(row, column, phrase[:_], curses.A_BOLD)
+                await asyncio.sleep(0)
+        if YEAR > 2020:
+            canvas.border()
+        await asyncio.sleep(0)
 
 
 def draw(canvas):
@@ -187,6 +224,9 @@ def draw(canvas):
         COROUTINES.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
     COROUTINES.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
     COROUTINES.append(fill_orbit_with_garbage(canvas, garbage_frames))
+    COROUTINES.append(display_year(canvas))
+    COROUTINES.append(display_phrase(canvas))
+    COROUTINES.append(increase_year())
     while True:
         for coroutine in COROUTINES.copy():
             try:
