@@ -5,7 +5,7 @@
 
 Ракета мирно летит по сверкающему звёздами космосу:
 
-![image](https://dvmn.org/media/lessons/ezgif.com-optimize_YgtCKU0.gif)
+![image](https://dvmn.org/media/lessons/ezgif-6-9ef2761efd97.gif)
 
 ## Запуск
 - Скачайте код
