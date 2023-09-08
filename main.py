@@ -13,10 +13,10 @@ from curses_tools import draw_frame, read_controls, get_frame_size
 
 TIC_TIMEOUT = 0.1
 SYMBOLS = ['+', '*', '.', ':']
-COROUTINES = []
-OBSTACLES = []
-OBSTACLES_IN_LAST_COLLISIONS = []
 YEAR = 1957
+coroutines = []
+obstacles = []
+obstacles_in_last_collisions = []
 
 
 async def sleep(tics):
@@ -78,10 +78,10 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     while 0 < row < max_row and 0 < column < max_column:
         canvas.addstr(round(row), round(column), symbol)
 
-        for obstacle in OBSTACLES.copy():
+        for obstacle in obstacles.copy():
             if obstacle.has_collision(round(row), round(column)):
-                OBSTACLES.remove(obstacle)
-                OBSTACLES_IN_LAST_COLLISIONS.append(obstacle)
+                obstacles.remove(obstacle)
+                obstacles_in_last_collisions.append(obstacle)
                 canvas.addstr(round(row), round(column), ' ')
                 return
 
@@ -104,7 +104,7 @@ async def animate_spaceship(canvas, row, column, spaceship_frames):
         rows_dir, columns_dir, space_pressed = read_controls(canvas)
 
         if space_pressed and YEAR >= 2020:
-            COROUTINES.append(fire(canvas, row, column + 2))
+            coroutines.append(fire(canvas, row, column + 2))
         row_speed, column_speed = update_speed(row_speed, column_speed, rows_dir, columns_dir)
 
         max_row, max_column = canvas.getmaxyx()
@@ -117,9 +117,9 @@ async def animate_spaceship(canvas, row, column, spaceship_frames):
         row = min(max(row + rows_dir, 0), max_row - rows)
         column = min(max(column + columns_dir, 0), max_column - columns)
 
-        for obstacle in OBSTACLES:
+        for obstacle in obstacles:
             if obstacle.has_collision(row, column, rows, columns):
-                COROUTINES.append(show_gameover(canvas))
+                coroutines.append(show_gameover(canvas))
                 return
 
 
@@ -134,20 +134,20 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     rows, columns = get_frame_size(garbage_frame)
     while row < rows_number:
         new_obstacle = Obstacle(row, column, rows, columns)
-        OBSTACLES.append(new_obstacle)
+        obstacles.append(new_obstacle)
 
         draw_frame(canvas, round(row), round(column), garbage_frame)
         await asyncio.sleep(0)
         draw_frame(canvas, round(row), round(column), garbage_frame, negative=True)
         row += speed
-        for garbage in OBSTACLES_IN_LAST_COLLISIONS:
+        for garbage in obstacles_in_last_collisions:
             if new_obstacle.has_collision(garbage.row, garbage.column):
-                OBSTACLES_IN_LAST_COLLISIONS.remove(garbage)
+                obstacles_in_last_collisions.remove(garbage)
                 await explode(canvas, round(new_obstacle.row), round(new_obstacle.column))
                 return
 
-        if new_obstacle in OBSTACLES:
-            OBSTACLES.remove(new_obstacle)
+        if new_obstacle in obstacles:
+            obstacles.remove(new_obstacle)
 
 
 async def fill_orbit_with_garbage(canvas, garbage_frames):
@@ -162,7 +162,7 @@ async def fill_orbit_with_garbage(canvas, garbage_frames):
             delay_tics = get_garbage_delay_tics(YEAR)
             if delay_tics:
                 col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
-                COROUTINES.append(fly_garbage(canvas, col, garbage_frame))
+                coroutines.append(fly_garbage(canvas, col, garbage_frame))
                 await sleep(delay_tics)
 
         await sleep(12)
@@ -221,18 +221,18 @@ def draw(canvas):
         row = random.randint(distance_from_borders_min, max_row - distance_from_borders_max)
         col = random.randint(distance_from_borders_min, max_column - distance_from_borders_max)
         symbol = random.choice(SYMBOLS)
-        COROUTINES.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
-    COROUTINES.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
-    COROUTINES.append(fill_orbit_with_garbage(canvas, garbage_frames))
-    COROUTINES.append(display_year(canvas))
-    COROUTINES.append(display_phrase(canvas))
-    COROUTINES.append(increase_year())
+        coroutines.append(blink(canvas, row, col, symbol, random.randint(1, 20)))
+    coroutines.append(animate_spaceship(canvas, max_row / 2, max_column / 2, spaceship_frames))
+    coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
+    coroutines.append(display_year(canvas))
+    coroutines.append(display_phrase(canvas))
+    coroutines.append(increase_year())
     while True:
-        for coroutine in COROUTINES.copy():
+        for coroutine in coroutines.copy():
             try:
                 coroutine.send(None)
             except StopIteration:
-                COROUTINES.remove(coroutine)
+                coroutines.remove(coroutine)
         canvas.refresh()
         time.sleep(TIC_TIMEOUT)
 
